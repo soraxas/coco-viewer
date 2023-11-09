@@ -20,13 +20,18 @@ from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-parser = argparse.ArgumentParser(description="View images with bboxes from the COCO dataset")
+parser = argparse.ArgumentParser(
+    description="View images with bboxes from the COCO dataset"
+)
 parser.add_argument(
     "annotations",
     type=str,
     help="path to annotations json file",
 )
-parser.add_argument("imagedir", default="./",nargs='?', type=str, help="path to images folder")
+parser.add_argument(
+    "imagedir", default="./", nargs="?", type=str, help="path to images folder"
+)
+
 
 class Data:
     """Handles data related stuff."""
@@ -48,7 +53,9 @@ class Data:
         full_path = os.path.join(self.image_dir, img_name)
 
         # Get objects and category ids
-        objects = [obj for obj in self.instances["annotations"] if obj["image_id"] == img_id]
+        objects = [
+            obj for obj in self.instances["annotations"] if obj["image_id"] == img_id
+        ]
         obj_categories_ids = [obj["category_id"] for obj in objects]
 
         # List of category ids of all objects
@@ -81,7 +88,7 @@ class Data:
     def previous_image(self):
         """Loads the previous image in a list."""
         self.current_image = self.images.prev()
-    
+
     def select_image(self, ind):
         self.current_image = self.images.set(ind)
 
@@ -123,7 +130,9 @@ def prepare_colors(n_objects: int, shuffle: bool = True) -> list:
     # Get some colors
     hsv_tuples = [(x / n_objects, 1.0, 1.0) for x in range(n_objects)]
     colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
-    colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), colors))
+    colors = list(
+        map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), colors)
+    )
 
     # Shuffle colors
     if shuffle:
@@ -140,7 +149,10 @@ def get_categories(instances: dict) -> dict:
     colors = prepare_colors(n_objects=len(instances["categories"]), shuffle=True)
     categories = list(
         zip(
-            [[category["id"], category["name"]] for category in instances["categories"]],
+            [
+                [category["id"], category["name"]]
+                for category in instances["categories"]
+            ],
             colors,
         )
     )
@@ -206,21 +218,25 @@ def draw_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size
                 show_label(label_size, c, b, draw)
 
 
-def draw_rotated_bboxes(draw, objects, labels, obj_categories, ignore, width, label_size):
+def draw_rotated_bboxes(
+    draw, objects, labels, obj_categories, ignore, width, label_size
+):
     for i, (c, obj) in enumerate(zip(obj_categories, objects)):
         if i not in ignore:
-            x = int(obj['bbox'][0])
-            y = int(obj['bbox'][1])
-            box_width = int(obj['bbox'][2])
-            box_height = int(obj['bbox'][3])
-            box = [x, y, x+box_width, y+box_height]
+            x = int(obj["bbox"][0])
+            y = int(obj["bbox"][1])
+            box_width = int(obj["bbox"][2])
+            box_height = int(obj["bbox"][3])
+            box = [x, y, x + box_width, y + box_height]
 
-            rotation = obj['attributes']['rotation']
+            rotation = obj["attributes"]["rotation"]
 
-            points = [(int(x), int(y)),
-                      (int(x + box_width), int(y)),
-                      (int(x + box_width), int(y + box_height)),
-                      (int(x), int(y + box_height))]
+            points = [
+                (int(x), int(y)),
+                (int(x + box_width), int(y)),
+                (int(x + box_width), int(y + box_height)),
+                (int(x), int(y + box_height)),
+            ]
 
             center_point = (int(x + box_width / 2), int(y + box_height / 2))
 
@@ -230,8 +246,12 @@ def draw_rotated_bboxes(draw, objects, labels, obj_categories, ignore, width, la
             for point in points:
                 translated_x = point[0] - center_point[0]
                 translated_y = point[1] - center_point[1]
-                rotated_x = translated_x * math.cos(angle_rad) - translated_y * math.sin(angle_rad)
-                rotated_y = translated_x * math.sin(angle_rad) + translated_y * math.cos(angle_rad)
+                rotated_x = translated_x * math.cos(
+                    angle_rad
+                ) - translated_y * math.sin(angle_rad)
+                rotated_y = translated_x * math.sin(
+                    angle_rad
+                ) + translated_y * math.cos(angle_rad)
                 final_x = rotated_x + center_point[0]
                 final_y = rotated_y + center_point[1]
                 rotated_points.append((final_x, final_y))
@@ -257,7 +277,7 @@ def draw_masks(draw, objects, obj_categories, ignore, alpha):
                         try:
                             draw.polygon(m_, outline=fill, fill=fill)
                         except:
-                            print('WARNING draw_masks: invalid polygon', m_)
+                            print("WARNING draw_masks: invalid polygon", m_)
             # RLE mask for collection of objects (iscrowd=1)
             elif isinstance(m, dict) and objects[i]["iscrowd"]:
                 mask = rle_to_mask(m["counts"][:-1], m["size"][0], m["size"][1])
@@ -312,9 +332,9 @@ class ImageList:
             self.n -= 1
             current_image = self.image_list[self.n]
         return current_image
-    
-    def set(self,ind):
-        assert ind>=0 and ind < self.max
+
+    def set(self, ind):
+        assert ind >= 0 and ind < self.max
         self.n = ind
         current_image = self.image_list[self.n]
         return current_image
@@ -339,9 +359,13 @@ class ImagePanel(ttk.Frame):
             relief="sunken",
             borderwidth=2,
         )
-        self.hscroll = ttk.Scrollbar(parent, command=self._canvas.xview, orient=tk.HORIZONTAL)
+        self.hscroll = ttk.Scrollbar(
+            parent, command=self._canvas.xview, orient=tk.HORIZONTAL
+        )
         self.vscroll = ttk.Scrollbar(parent, command=self._canvas.yview)
-        self._canvas.configure(xscrollcommand=self.hscroll.set, yscrollcommand=self.vscroll.set)
+        self._canvas.configure(
+            xscrollcommand=self.hscroll.set, yscrollcommand=self.vscroll.set
+        )
 
         self.rowconfigure(0, weight=1, minsize=0)
         self.columnconfigure(0, weight=1, minsize=0)
@@ -396,8 +420,12 @@ class ImagePanel(ttk.Frame):
                 self.canvheight // 2,
             ),
         )
-        self._canvas.xview_moveto(0.5 * (self.canvwidth - self.width + 30) / self.canvwidth)
-        self._canvas.yview_moveto(0.5 * (self.canvheight - self.height + 30) / self.canvheight)
+        self._canvas.xview_moveto(
+            0.5 * (self.canvwidth - self.width + 30) / self.canvwidth
+        )
+        self._canvas.yview_moveto(
+            0.5 * (self.canvheight - self.height + 30) / self.canvheight
+        )
         self.adjust_scrolls()
 
     def adjust_scrolls(self):
@@ -527,16 +555,23 @@ class ObjectsPanel(ttk.PanedWindow):
             borderwidth=2,
             background="gray50",
         ).pack(side=tk.TOP, fill=tk.X)
-        self.category_box = tk.Listbox(self.category_subpanel, selectmode=tk.EXTENDED, exportselection=0)
+        self.category_box = tk.Listbox(
+            self.category_subpanel, selectmode=tk.EXTENDED, exportselection=0
+        )
         self.category_box.pack(side=tk.TOP, fill=tk.Y, expand=True)
         self.add(self.category_subpanel)
 
         # Objects subpanel
         self.object_subpanel = ttk.Frame()
-        ttk.Label(self.object_subpanel, text="objects", borderwidth=2, background="gray50").pack(side=tk.TOP, fill=tk.X)
-        self.object_box = tk.Listbox(self.object_subpanel, selectmode=tk.EXTENDED, exportselection=0)
+        ttk.Label(
+            self.object_subpanel, text="objects", borderwidth=2, background="gray50"
+        ).pack(side=tk.TOP, fill=tk.X)
+        self.object_box = tk.Listbox(
+            self.object_subpanel, selectmode=tk.EXTENDED, exportselection=0
+        )
         self.object_box.pack(side=tk.TOP, fill=tk.Y, expand=True)
         self.add(self.object_subpanel)
+
 
 class ImagelistPanel(ttk.PanedWindow):
     def __init__(self, parent):
@@ -544,14 +579,22 @@ class ImagelistPanel(ttk.PanedWindow):
         # Image list subpanel
         self.pack(side=tk.LEFT, fill=tk.Y)
         self.imglist_subpanel = ttk.Frame()
-        ttk.Label(self.imglist_subpanel, text="image list", borderwidth=2, background="gray50").pack(side=tk.TOP, fill=tk.X)
+        ttk.Label(
+            self.imglist_subpanel, text="image list", borderwidth=2, background="gray50"
+        ).pack(side=tk.TOP, fill=tk.X)
         # image list controller
         scrollbar = tk.Scrollbar(self.imglist_subpanel)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.imglist_box = tk.Listbox(self.imglist_subpanel, selectmode=tk.SINGLE, exportselection=0,yscrollcommand=scrollbar.set)
+        self.imglist_box = tk.Listbox(
+            self.imglist_subpanel,
+            selectmode=tk.SINGLE,
+            exportselection=0,
+            yscrollcommand=scrollbar.set,
+        )
         scrollbar.config(command=self.imglist_box.yview)
         self.imglist_box.pack(side=tk.TOP, fill=tk.Y, expand=True)
         self.add(self.imglist_subpanel)
+
 
 class SlidersBar(ttk.Frame):
     def __init__(self, parent):
@@ -559,21 +602,36 @@ class SlidersBar(ttk.Frame):
         self.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Bbox thickness controller
-        self.bbox_slider = tk.Scale(self, label="bbox", from_=0, to=25, tickinterval=5, orient=tk.HORIZONTAL)
+        self.bbox_slider = tk.Scale(
+            self, label="bbox", from_=0, to=25, tickinterval=5, orient=tk.HORIZONTAL
+        )
         self.bbox_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Label text size controller
-        self.label_slider = tk.Scale(self, label="label", from_=10, to=100, tickinterval=25, orient=tk.HORIZONTAL)
+        self.label_slider = tk.Scale(
+            self, label="label", from_=10, to=100, tickinterval=25, orient=tk.HORIZONTAL
+        )
         self.label_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Mask transparency controller
-        self.mask_slider = tk.Scale(self, label="mask", from_=0, to=255, tickinterval=50, orient=tk.HORIZONTAL)
+        self.mask_slider = tk.Scale(
+            self, label="mask", from_=0, to=255, tickinterval=50, orient=tk.HORIZONTAL
+        )
         self.mask_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
 
 
 class Controller:
-    def __init__(self, data, root, image_panel, statusbar, menu, objects_panel, sliders, imglist_panel):
+    def __init__(
+        self,
+        data,
+        root,
+        image_panel,
+        statusbar,
+        menu,
+        objects_panel,
+        sliders,
+        imglist_panel,
+    ):
         self.data = data  # data layer
         self.root = root  # root window
         self.image_panel = image_panel  # image panel
@@ -603,13 +661,21 @@ class Controller:
         self.masks_on_global = tk.BooleanVar()  # Toggles masks globally
         self.masks_on_global.set(True)
         self.coloring_on_global = tk.BooleanVar()  # Toggles objects/categories coloring
-        self.coloring_on_global.set(False)  # False for categories (defaults), True for objects
+        self.coloring_on_global.set(
+            False
+        )  # False for categories (defaults), True for objects
         # Menu Configuration
         self.menu.file.entryconfigure("Save", command=self.save_image)
         self.menu.file.entryconfigure("Exit", command=self.exit)
-        self.menu.view.entryconfigure("BBoxes", variable=self.bboxes_on_global, command=self.menu_view_bboxes)
-        self.menu.view.entryconfigure("Labels", variable=self.labels_on_global, command=self.menu_view_labels)
-        self.menu.view.entryconfigure("Masks", variable=self.masks_on_global, command=self.menu_view_masks)
+        self.menu.view.entryconfigure(
+            "BBoxes", variable=self.bboxes_on_global, command=self.menu_view_bboxes
+        )
+        self.menu.view.entryconfigure(
+            "Labels", variable=self.labels_on_global, command=self.menu_view_labels
+        )
+        self.menu.view.entryconfigure(
+            "Masks", variable=self.masks_on_global, command=self.menu_view_masks
+        )
         self.menu.view.colormenu.entryconfigure(
             "Categories",
             variable=self.coloring_on_global,
@@ -632,7 +698,9 @@ class Controller:
         self.category_box_content = tk.StringVar()
         self.object_box_content = tk.StringVar()
         self.imglist_box_content = tk.StringVar()
-        self.objects_panel.category_box.configure(listvariable=self.category_box_content)
+        self.objects_panel.category_box.configure(
+            listvariable=self.category_box_content
+        )
         self.objects_panel.object_box.configure(listvariable=self.object_box_content)
         self.imglist_panel.imglist_box.configure(listvariable=self.imglist_box_content)
         # Sliders Setup
@@ -642,9 +710,15 @@ class Controller:
         self.label_size.set(15)
         self.mask_alpha = tk.IntVar()
         self.mask_alpha.set(128)
-        self.sliders.bbox_slider.configure(variable=self.bbox_thickness, command=lambda e: self.update_img())
-        self.sliders.label_slider.configure(variable=self.label_size, command=lambda e: self.update_img())
-        self.sliders.mask_slider.configure(variable=self.mask_alpha, command=lambda e: self.update_img())
+        self.sliders.bbox_slider.configure(
+            variable=self.bbox_thickness, command=lambda e: self.update_img()
+        )
+        self.sliders.label_slider.configure(
+            variable=self.label_size, command=lambda e: self.update_img()
+        )
+        self.sliders.mask_slider.configure(
+            variable=self.mask_alpha, command=lambda e: self.update_img()
+        )
 
         # Bind all events
         self.bind_events()
@@ -686,11 +760,21 @@ class Controller:
             draw_masks(draw, objects, names_colors, ignore, alpha)
         # Draw bounding boxes
         if bboxes_on:
-            if 'attributes' in objects[0].keys():
-                if 'rotation' in objects[0]['attributes']:
-                    draw_rotated_bboxes(draw, objects, labels_on, names_colors, ignore, width, label_size)
+            if "attributes" in objects[0].keys():
+                if "rotation" in objects[0]["attributes"]:
+                    draw_rotated_bboxes(
+                        draw,
+                        objects,
+                        labels_on,
+                        names_colors,
+                        ignore,
+                        width,
+                        label_size,
+                    )
             else:
-                draw_bboxes(draw, objects, labels_on, names_colors, ignore, width, label_size)
+                draw_bboxes(
+                    draw, objects, labels_on, names_colors, ignore, width, label_size
+                )
         del draw
         # Resulting image
         self.current_composed_image = Image.alpha_composite(img_open, draw_layer)
@@ -716,7 +800,11 @@ class Controller:
         if self.selected_objs is None:
             ignore = []
         else:
-            ignore = [i for i in range(len(self.current_img_obj_categories)) if i not in self.selected_objs]
+            ignore = [
+                i
+                for i in range(len(self.current_img_obj_categories))
+                if i not in self.selected_objs
+            ]
 
         width = self.bbox_thickness.get() if width is None else width
         alpha = self.mask_alpha.get() if alpha is None else alpha
@@ -747,9 +835,13 @@ class Controller:
         self.image_panel.reset(canvwidth=w, canvheight=h)
 
         # Update statusbar vars
-        self.file_count_status.set(f"{str(self.data.images.n + 1)}/{self.data.images.max}")
+        self.file_count_status.set(
+            f"{str(self.data.images.n + 1)}/{self.data.images.max}"
+        )
         self.file_name_status.set(f"{self.data.current_image[-1]}")
-        self.description_status.set(f"{self.data.instances.get('info', {}).get('description', '')}")
+        self.description_status.set(
+            f"{self.data.instances.get('info', {}).get('description', '')}"
+        )
         self.nobjects_status.set(f"objects: {len(self.current_img_obj_categories)}")
         self.ncategories_status.set(f"categories: {len(self.current_img_categories)}")
 
@@ -762,16 +854,16 @@ class Controller:
         self.root.quit()
 
     def next_img(self, event=None):
-        cur_id = self.imglist_panel.imglist_box.index('active')
-        cur_id = min(self.imglist_panel.imglist_box.size() - 1,cur_id+1)
+        cur_id = self.imglist_panel.imglist_box.index("active")
+        cur_id = min(self.imglist_panel.imglist_box.size() - 1, cur_id + 1)
         self.imglist_panel.imglist_box.selection_clear(0, tk.END)
         self.imglist_panel.imglist_box.activate(cur_id)
         self.imglist_panel.imglist_box.selection_set(cur_id)
         self.select_img(None)
 
     def prev_img(self, event=None):
-        cur_id = self.imglist_panel.imglist_box.index('active')
-        cur_id = max(0,cur_id-1)
+        cur_id = self.imglist_panel.imglist_box.index("active")
+        cur_id = max(0, cur_id - 1)
         self.imglist_panel.imglist_box.selection_clear(0, tk.END)
         self.imglist_panel.imglist_box.activate(cur_id)
         self.imglist_panel.imglist_box.selection_set(cur_id)
@@ -854,7 +946,9 @@ class Controller:
     def update_category_box(self):
         ids = self.current_img_categories
         names = [self.data.categories[i][0] for i in ids]
-        self.category_box_content.set([" ".join([str(i), str(n)]) for i, n in zip(ids, names)])
+        self.category_box_content.set(
+            [" ".join([str(i), str(n)]) for i, n in zip(ids, names)]
+        )
         self.objects_panel.category_box.selection_clear(0, tk.END)
         if self.selected_cats is not None:
             for i in self.selected_cats:
@@ -879,7 +973,9 @@ class Controller:
     def update_object_box(self):
         ids = self.current_img_obj_categories
         names = [self.data.categories[i][0] for i in ids]
-        self.object_box_content.set([" ".join([str(i), str(n)]) for i, n in enumerate(names)])
+        self.object_box_content.set(
+            [" ".join([str(i), str(n)]) for i, n in enumerate(names)]
+        )
         self.objects_panel.object_box.selection_clear(0, tk.END)
         if self.selected_objs is not None:
             for i in self.selected_objs:
@@ -902,11 +998,11 @@ class Controller:
         self.update_img()
 
     def update_imglist_box(self):
-        imglist = [f'{i:04d} {name}' for i,name in self.data.images.image_list]
+        imglist = [f"{i:04d} {name}" for i, name in self.data.images.image_list]
         self.imglist_box_content.set(imglist)
         max_len = max(len(item) for item in imglist)
-        self.imglist_panel.imglist_box.config(width = max_len)
-        self.imglist_panel.imglist_box.select_set(0,tk.END)
+        self.imglist_panel.imglist_box.config(width=max_len)
+        self.imglist_panel.imglist_box.select_set(0, tk.END)
 
     def select_img(self, event):
         ind = self.imglist_panel.imglist_box.curselection()[0]
@@ -922,13 +1018,19 @@ class Controller:
         self.masks_slider_status_update()
 
     def bbox_slider_status_update(self):
-        self.sliders.bbox_slider.configure(state=tk.NORMAL if self.bboxes_on_local else tk.DISABLED)
+        self.sliders.bbox_slider.configure(
+            state=tk.NORMAL if self.bboxes_on_local else tk.DISABLED
+        )
 
     def label_slider_status_update(self):
-        self.sliders.label_slider.configure(state=tk.NORMAL if self.labels_on_local else tk.DISABLED)
+        self.sliders.label_slider.configure(
+            state=tk.NORMAL if self.labels_on_local else tk.DISABLED
+        )
 
     def masks_slider_status_update(self):
-        self.sliders.mask_slider.configure(state=tk.NORMAL if self.masks_on_local else tk.DISABLED)
+        self.sliders.mask_slider.configure(
+            state=tk.NORMAL if self.masks_on_local else tk.DISABLED
+        )
 
     def bind_events(self):
         """Binds events."""
@@ -969,7 +1071,7 @@ def main():
     root = tk.Tk()
     root.title("COCO Viewer")
     # Set the window icon
-    icon_path = os.path.dirname(os.path.realpath(__file__))+'/coco_viewer.png'
+    icon_path = os.path.dirname(os.path.realpath(__file__)) + "/coco_viewer.png"
     root.iconphoto(True, tk.PhotoImage(file=icon_path))
 
     data = Data(args.imagedir, args.annotations)
@@ -979,7 +1081,9 @@ def main():
     imglist_panel = ImagelistPanel(root)
     menu = Menu(root)
     image_panel = ImagePanel(root)
-    Controller(data, root, image_panel, statusbar, menu, objects_panel, sliders, imglist_panel)
+    Controller(
+        data, root, image_panel, statusbar, menu, objects_panel, sliders, imglist_panel
+    )
     root.mainloop()
 
 
