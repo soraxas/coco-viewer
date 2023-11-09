@@ -22,7 +22,7 @@ Simple COCO Objects Viewer in Tkinter. Allows quick viewing on local machine.
 ## Installation
 
 ```
-git clone https://github.com/trsvchn/coco-viewer.git
+pip install git+https://github.com/soraxas/coco-viewer.git
 ```
 
 ## Usage
