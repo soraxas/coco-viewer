@@ -32,6 +32,8 @@ parser.add_argument(
     "imagedir", default="./", nargs="?", type=str, help="path to images folder"
 )
 
+MAX_LENGTH_OF_IMG_LIST = 50
+
 
 class Data:
     """Handles data related stuff."""
@@ -359,6 +361,7 @@ class ImagePanel(ttk.Frame):
             relief="sunken",
             borderwidth=2,
         )
+
         self.hscroll = ttk.Scrollbar(
             parent, command=self._canvas.xview, orient=tk.HORIZONTAL
         )
@@ -619,6 +622,21 @@ class SlidersBar(ttk.Frame):
         )
         self.mask_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
+        # Image scale controller
+        # self.img_scale_slider = tk.Scale(
+        #     self, from_=0.55, to=2.75, digits = 3, resolution = 0.01, label = "Lower"
+        # )
+        self.img_scale_slider = tk.Scale(
+            self,
+            label="scale",
+            from_=0.05,
+            to=10.0,
+            digits=5,
+            resolution=0.05,
+            orient=tk.HORIZONTAL,
+        )
+        self.img_scale_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
 
 class Controller:
     def __init__(
@@ -710,14 +728,31 @@ class Controller:
         self.label_size.set(15)
         self.mask_alpha = tk.IntVar()
         self.mask_alpha.set(128)
+        self.img_scale = tk.DoubleVar()
+        self.img_scale.set(1.0)
+
+        # the following is to reduce frequent callback
+        delayed_update_handler = None
+
+        def delayed_update(ev):
+            # cancel any existing callback
+            nonlocal delayed_update_handler
+            if delayed_update_handler is not None:
+                self.root.after_cancel(delayed_update_handler)
+                delayed_update_handler = None
+            delayed_update_handler = self.root.after(500, self.update_img)
+
         self.sliders.bbox_slider.configure(
-            variable=self.bbox_thickness, command=lambda e: self.update_img()
+            variable=self.bbox_thickness, command=delayed_update
         )
         self.sliders.label_slider.configure(
-            variable=self.label_size, command=lambda e: self.update_img()
+            variable=self.label_size, command=delayed_update
         )
         self.sliders.mask_slider.configure(
-            variable=self.mask_alpha, command=lambda e: self.update_img()
+            variable=self.mask_alpha, command=delayed_update
+        )
+        self.sliders.img_scale_slider.configure(
+            variable=self.img_scale, command=delayed_update
         )
 
         # Bind all events
@@ -760,7 +795,7 @@ class Controller:
             draw_masks(draw, objects, names_colors, ignore, alpha)
         # Draw bounding boxes
         if bboxes_on:
-            if "attributes" in objects[0].keys():
+            if len(objects) > 0 and "attributes" in objects[0].keys():
                 if "rotation" in objects[0]["attributes"]:
                     draw_rotated_bboxes(
                         draw,
@@ -779,7 +814,9 @@ class Controller:
         # Resulting image
         self.current_composed_image = Image.alpha_composite(img_open, draw_layer)
 
-    def update_img(self, local=True, width=None, alpha=None, label_size=None):
+    def update_img(
+        self, local=True, width=None, alpha=None, label_size=None, img_scale=None
+    ):
         """Triggers image composition and sets composed image as current."""
         bboxes_on = self.bboxes_on_local if local else self.bboxes_on_global.get()
         labels_on = self.labels_on_local if local else self.labels_on_global.get()
@@ -809,6 +846,7 @@ class Controller:
         width = self.bbox_thickness.get() if width is None else width
         alpha = self.mask_alpha.get() if alpha is None else alpha
         label_size = self.label_size.get() if label_size is None else label_size
+        img_scale = self.img_scale.get() if img_scale is None else img_scale
 
         # Compose image
         self.compose_image(
@@ -826,6 +864,10 @@ class Controller:
 
         # Prepare PIL image for Tkinter
         img = self.current_composed_image
+
+        newsize = (np.array(img.size) * img_scale).astype(int)
+        img = img.resize(newsize)
+
         w, h = img.size
         img = ImageTk.PhotoImage(img)
 
@@ -1001,6 +1043,7 @@ class Controller:
         imglist = [f"{i:04d} {name}" for i, name in self.data.images.image_list]
         self.imglist_box_content.set(imglist)
         max_len = max(len(item) for item in imglist)
+        max_len = min(max_len, MAX_LENGTH_OF_IMG_LIST)
         self.imglist_panel.imglist_box.config(width=max_len)
         self.imglist_panel.imglist_box.select_set(0, tk.END)
 
@@ -1059,6 +1102,18 @@ class Controller:
         self.objects_panel.object_box.bind("<<ListboxSelect>>", self.select_object)
         self.imglist_panel.imglist_box.bind("<<ListboxSelect>>", self.select_img)
         self.image_panel.bind("<Button-1>", lambda e: self.image_panel.focus_set())
+
+        # zoom
+
+        def do_zoom(event):
+            print(event)
+            x = self.image_panel._canvas.canvasx(event.x)
+            y = self.image_panel._canvas.canvasy(event.y)
+            factor = 1.001**event.delta
+            self.image_panel._canvas.scale(tk.ALL, x, y, factor, factor)
+
+        print()
+        self.root.bind("<minus>", do_zoom)
 
 
 def print_info(message: str):
